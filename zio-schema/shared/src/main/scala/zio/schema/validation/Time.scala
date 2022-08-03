@@ -8,6 +8,13 @@ trait Time {
   /**
    * Format is almost the same as the one used by the java.time.format.DateTimeFormatter class.
    *
+   *  yy           00-99 always 2 digits
+   *  yyyy         0000-9999 always 4 digits
+   *  m            1-12 always 1 or 2 digits
+   *  mm           01-12 always 2 digits
+   *  d            1-31 always 1 or 2 digits
+   *  dd           01-31 always 2 digits
+   *
    *  a           AM/PM always 2 letters
    *  h           1-12 hour 1 or 2 digits
    *  hh          01-12 hour always 2 digits
@@ -47,6 +54,7 @@ trait Time {
   private case class Literal(value: String)                               extends Field
 
   private val fields = Map[Char, Field](
+    'y' -> TimeField('y', 1, 4),
     'H' -> TimeField('H', 1, 2),
     'h' -> TimeField('h', 1, 2),
     'm' -> TimeField('m', 1, 2),
@@ -132,8 +140,12 @@ trait Time {
   private val from10to59 = Regex.between('1', '5') ~ Regex.digit
   private val from00to59 = Regex.between('0', '5') ~ Regex.digit
   private val from0to9   = Regex.digit
+  private val from00to99   = Regex.digit ~ Regex.digit //.exactly(2)
+  private val from0000to9999   = Regex.digit.exactly(4)
 
   private def fieldToRegex(field: Field): Regex = field match {
+    case TimeField('y', 2, _)                        => from00to99
+    case TimeField('y', 4, _)                        => from0000to9999
     case TimeField('H', 1, _)                        => from20to24 | from10to19 | from00to09 | from0to9
     case TimeField('H', 2, _)                        => from00to19 | from20to24
     case TimeField('h', 1, _)                        => from10to12 | from00to09 | from0to9
@@ -142,6 +154,8 @@ trait Time {
     case TimeField('m', 2, _) | TimeField('s', 2, _) => from00to59
     case TimeField('S', length, _)                   => Regex.digit.between(length, length)
     case TimeField('a', _, _)                        => Regex.oneOf('A', 'P').between(1, 1) ~ Regex.oneOf('M').between(1, 1)
+    case TimeField('y', 1, _)                        => throw new IllegalArgumentException(s"Invalid year format: y")
+    case TimeField('y', 3, _)                        => throw new IllegalArgumentException(s"Invalid year format: yyy")
     case TimeField(_, _, _) =>
       throw new IllegalArgumentException(s"Something went terribly wrong. This is a bug. Please report it.")
     case Literal(l) => l.map(c => Regex.oneOf(c)).reduce(_ ~ _)

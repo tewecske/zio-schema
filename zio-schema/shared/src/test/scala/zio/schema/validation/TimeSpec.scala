@@ -7,6 +7,8 @@ object TimeSpec extends DefaultRunnableSpec {
 
   def spec: ZSpec[Environment, Failure] = suite("TimeSpec")(
     test("Valid formats") {
+      assert(Validation.time("yy"))(isSubtype[Validation[String]](anything)) &&
+      assert(Validation.time("yyyy"))(isSubtype[Validation[String]](anything)) &&
       assert(Validation.time("H"))(isSubtype[Validation[String]](anything)) &&
       assert(Validation.time("HH"))(isSubtype[Validation[String]](anything)) &&
       assert(Validation.time("h"))(isSubtype[Validation[String]](anything)) &&
@@ -32,6 +34,8 @@ object TimeSpec extends DefaultRunnableSpec {
       assert(Validation.time("H:m:s a"))(isSubtype[Validation[String]](anything))
     },
     test("Invalid formats") {
+      assert(Validation.time("y"))(throws(hasMessage(containsString("Invalid year format")))) &&
+      assert(Validation.time("yyy"))(throws(hasMessage(containsString("Invalid year format")))) &&
       assert(Validation.time("HHH"))(throws(hasMessage(containsString("max length for")))) &&
       assert(Validation.time("hhh"))(throws(hasMessage(containsString("max length for")))) &&
       assert(Validation.time("mmm"))(throws(hasMessage(containsString("max length for")))) &&

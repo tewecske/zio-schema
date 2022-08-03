@@ -7,6 +7,10 @@ import scala.util.Try
 import zio.test._
 
 object ValidationSpec extends DefaultRunnableSpec {
+  import zio.schema.validation.ValidationSpec.Year._
+  import zio.schema.validation.ValidationSpec.Month._
+  import zio.schema.validation.ValidationSpec.DayOfMonth._
+
   import zio.schema.validation.ValidationSpec.Hour._
   import zio.schema.validation.ValidationSpec.Minute._
   import zio.schema.validation.ValidationSpec.Second._
@@ -134,6 +138,16 @@ object ValidationSpec extends DefaultRunnableSpec {
         assertTrue(validation.validate("").isLeft)
       }
     ),
+    test("Date Validation yy") {
+      val parsedDates =
+        parseDates(CreateDatesConfig(HasYear, "", NoMonth, "", NoDayOfMonth), "yy")
+      assertParsedTimes(parsedDates)
+    },
+    test("Date Validation yyyy") {
+      val parsedDates =
+        parseDates(CreateDatesConfig(HasYear, "", NoMonth, "", NoDayOfMonth), "yyyy")
+      assertParsedTimes(parsedDates)
+    },
     test("Time Validation HH") {
       val parsedTimes =
         parseTimes(CreateTimesConfig(HasHour, "", NoMinute, "", NoSecond, "", NoFraction, "", NoAmPm), "HH")
@@ -245,7 +259,97 @@ object ValidationSpec extends DefaultRunnableSpec {
       assertTrue(wrongTimeResults.forall(result => result.valid == result.parsed))
   }
 
-  private case class ParsedTime(time: String, valid: Boolean, parsed: Boolean)
+  private def parseDates(createDatesConfig: CreateDatesConfig, format: String): ParsedTimes = {
+    val dates = createDates(exampleDates, createDatesConfig)
+    val wrongDates = createDates(wrongExampleDates, createDatesConfig)
+    val validation = Validation.time(format)
+    val formatter = DateTimeFormatter.ofPattern(format)
+
+    def innerParse(times: Seq[String]) =
+      times.map { time =>
+        val valid = validation.validate(time).isRight
+        val parsed = Try(formatter.parse(time)).isSuccess
+        ParsedTime(time, valid, parsed)
+      }
+
+    val results = innerParse(dates)
+    val wrongTimeResults = innerParse(wrongDates)
+
+    ParsedTimes(results, wrongTimeResults)
+  }
+  private case class ExampleDate(year: String, month: String, dayOfMonth: String)
+
+  private val exampleDates =
+    Seq(
+      ExampleDate("00", "1", "1"),
+      ExampleDate("00", "01", "01"),
+      ExampleDate("22", "08", "22"),
+      ExampleDate("00", "08", "22"),
+      ExampleDate("2000", "1", "1"),
+      ExampleDate("2000", "01", "01"),
+      ExampleDate("2022", "08", "22"),
+      ExampleDate("9999", "12", "31")
+    )
+
+  private val wrongExampleDates =
+    Seq(
+      ExampleDate("", "", ""),
+      ExampleDate("-1", "-1", "-1"),
+      ExampleDate("11111", "111", "111"),
+      ExampleDate("99999", "13", "32")
+    )
+
+  sealed private trait Year
+  private object Year {
+    case object HasYear extends Year
+    case object NoYear extends Year
+  }
+
+  sealed private trait Month
+  private object Month {
+    case object HasMonth extends Month
+    case object NoMonth extends Month
+  }
+
+  sealed private trait DayOfMonth
+  private object DayOfMonth {
+    case object HasDayOfMonth extends DayOfMonth
+    case object NoDayOfMonth extends DayOfMonth
+  }
+
+  private case class CreateDatesConfig(
+    hasYear: Year,
+    monthSeparator: String = "",
+    hasMonth: Month,
+    dayOfMonthSeparator: String = "",
+    hasDayOfMonth: DayOfMonth,
+  )
+
+  private def createDates(
+    exampleTimes: Seq[ExampleDate],
+    config: CreateDatesConfig
+  ): Seq[String] =
+    exampleTimes.map {
+      case ExampleDate(year, month, dayOfMonth) =>
+        val yearStr = config.hasYear match {
+          case HasYear => year
+          case NoYear => ""
+        }
+        val monthStr = config.hasMonth match {
+          case HasMonth => month
+          case NoMonth => ""
+        }
+        val dayOfMonthStr = config.hasDayOfMonth match {
+          case HasDayOfMonth => dayOfMonth
+          case NoDayOfMonth => ""
+        }
+        s"$yearStr${config.monthSeparator}$monthStr${config.dayOfMonthSeparator}$dayOfMonthStr"
+    }
+
+
+  private case class ParsedTime(time: String, valid: Boolean, parsed: Boolean) {
+    println(s"time: $time, valid: $valid, parsed: $parsed")
+  }
 
   private def parseTimes(createTimesConfig: CreateTimesConfig, format: String): ParsedTimes = {
     val times      = createTimes(exampleTimes, createTimesConfig)
