@@ -150,12 +150,16 @@ trait Time {
   private val from10to31 = from10to29 | from30to31
   private val from1to9   = Regex.between('1', '9')
   private val from01to09 = Regex.oneOf('0') ~ from1to9
-  private val from00to99   = Regex.digit ~ Regex.digit //.exactly(2)
-  private val from0000to9999   = Regex.digit.exactly(4)
+  private val from00to99 = Regex.digit ~ Regex.digit //.exactly(2)
+  private val from0000to9999 = Regex.digit.exactly(4)
+  //private val from0to999999999 = Regex.digit.between(1, 9)
+  private val from0to999999999 = Regex.digit.atMost(9)
+  //private val optionalPlusMinus = Regex.oneOf('+', '-').between(0, 1)
+  private val optionalPlusMinus = Regex.oneOf('+', '-').atMost(1)
 
   private def fieldToRegex(field: Field): Regex = field match {
-    case TimeField('y', 2, _)                        => from00to99
-    case TimeField('y', 4, _)                        => from0000to9999
+    case TimeField('y', 2, _)                        => optionalPlusMinus ~ from0to999999999
+    case TimeField('y', 4, _)                        => optionalPlusMinus ~ from0to999999999
     case TimeField('M', 1, _)                        => from10to12 | from01to09 | from1to9
     case TimeField('M', 2, _)                        => from10to12 | from01to09
     case TimeField('d', 1, _)                        => from10to31 | from01to09 | from1to9

@@ -1,9 +1,12 @@
 package zio.schema.validation
 
-import zio.schema.validation.ValidationSpec.DateDirection.{FORWARD, REVERSE}
+import zio.random.Random
+import zio.schema.JavaTimeGen
+import zio.schema.validation.ValidationSpec.DateDirection.FORWARD
 import zio.test.TestAspect.ignore
 
 import java.time.format.DateTimeFormatter
+import java.time.{Year => JYear}
 import scala.util.Try
 import zio.test._
 
@@ -229,6 +232,21 @@ object ValidationSpec extends DefaultRunnableSpec {
       assertTrue(validation.validate("32").isLeft)
       assertTrue(validation.validate("-1").isLeft)
     },
+    test("Date Validation yy/MM/dd") {
+      val parsedDates =
+        parseDates(CreateDatesConfig(HasYear, "/", HasMonth, "/", HasDayOfMonth), "yy/MM/dd")
+      assertParsedTimes(parsedDates)
+    },
+    testM("Date Validation yyyy-MM-dd") {
+      val format = "yyyy-MM-dd"
+      val validation = Validation.time(format)
+      val formatter = DateTimeFormatter.ofPattern(format)
+      check(JavaTimeGen.anyLocalDate) { localDate =>
+        val dateText = formatter.format(localDate)
+        println(s"GEN: $dateText")
+        assertTrue(validation.validate(dateText).isRight)
+      }
+    },
     test("Time Validation HH") {
       val parsedTimes =
         parseTimes(CreateTimesConfig(HasHour, "", NoMinute, "", NoSecond, "", NoFraction, "", NoAmPm), "HH")
@@ -368,11 +386,16 @@ object ValidationSpec extends DefaultRunnableSpec {
 
   private val exampleDates =
     Seq(
+      ExampleDate("-1", "1", "1"),
+      ExampleDate("-11", "11", "11"),
       ExampleDate("00", "1", "1"),
       ExampleDate("00", "1", "1"),
       ExampleDate("00", "01", "01"),
       ExampleDate("22", "08", "22"),
       ExampleDate("00", "08", "22"),
+      ExampleDate("99", "01", "01"),
+      ExampleDate("99", "1", "1"),
+      ExampleDate("10", "10", "10"),
       ExampleDate("2000", "1", "1"),
       ExampleDate("2000", "01", "01"),
       ExampleDate("2022", "08", "22"),
@@ -382,9 +405,9 @@ object ValidationSpec extends DefaultRunnableSpec {
   private val wrongExampleDates =
     Seq(
       ExampleDate("", "", ""),
-      ExampleDate("-1", "-1", "-1"),
-      ExampleDate("11111", "111", "111"),
-      ExampleDate("99999", "13", "32")
+      ExampleDate("#", "-1", "-1"),
+      ExampleDate("1111111111", "111", "111"),
+      ExampleDate("9999999999", "13", "32")
     )
 
   sealed private trait Year
