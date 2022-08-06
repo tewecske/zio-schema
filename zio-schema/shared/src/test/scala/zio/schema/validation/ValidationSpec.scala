@@ -1,9 +1,10 @@
 package zio.schema.validation
 
+import zio.schema.validation.ValidationSpec.DateDirection.{FORWARD, REVERSE}
+import zio.test.TestAspect.ignore
+
 import java.time.format.DateTimeFormatter
-
 import scala.util.Try
-
 import zio.test._
 
 object ValidationSpec extends DefaultRunnableSpec {
@@ -148,6 +149,86 @@ object ValidationSpec extends DefaultRunnableSpec {
         parseDates(CreateDatesConfig(HasYear, "", NoMonth, "", NoDayOfMonth), "yyyy")
       assertParsedTimes(parsedDates)
     },
+    test("Date Validation M") {
+      val parsedDates =
+        parseDates(CreateDatesConfig(NoYear, "", HasMonth, "", NoDayOfMonth), "M")
+      assertParsedTimes(parsedDates)
+    } @@ ignore, // DateTimeFormatter parses any number for this
+    test("Date Validation MM") {
+      val parsedDates =
+        parseDates(CreateDatesConfig(NoYear, "", HasMonth, "", NoDayOfMonth), "MM")
+      assertParsedTimes(parsedDates)
+    } @@ ignore, // DateTimeFormatter parses any number for this
+    test("Date Validation d") {
+      val parsedDates =
+        parseDates(CreateDatesConfig(NoYear, "", NoMonth, "", HasDayOfMonth), "d")
+      assertParsedTimes(parsedDates)
+    } @@ ignore, // DateTimeFormatter parses any number for this
+    test("Date Validation dd") {
+      val parsedDates =
+        parseDates(CreateDatesConfig(NoYear, "", NoMonth, "", HasDayOfMonth), "dd")
+      assertParsedTimes(parsedDates)
+    } @@ ignore, // DateTimeFormatter parses any number for this
+    test("Date Validation M manual") {
+      val validation = Validation.time("M")
+      assertTrue(validation.validate("1").isRight)
+      assertTrue(validation.validate("9").isRight)
+      assertTrue(validation.validate("01").isRight)
+      assertTrue(validation.validate("09").isRight)
+      assertTrue(validation.validate("10").isRight)
+      assertTrue(validation.validate("12").isRight)
+      assertTrue(validation.validate("0").isLeft)
+      assertTrue(validation.validate("99").isLeft)
+      assertTrue(validation.validate("00").isLeft)
+      assertTrue(validation.validate("009").isLeft)
+      assertTrue(validation.validate("13").isLeft)
+      assertTrue(validation.validate("-1").isLeft)
+    },
+    test("Date Validation MM manual") {
+      val validation = Validation.time("MM")
+      assertTrue(validation.validate("1").isLeft)
+      assertTrue(validation.validate("9").isLeft)
+      assertTrue(validation.validate("01").isRight)
+      assertTrue(validation.validate("09").isRight)
+      assertTrue(validation.validate("10").isRight)
+      assertTrue(validation.validate("12").isRight)
+      assertTrue(validation.validate("0").isLeft)
+      assertTrue(validation.validate("99").isLeft)
+      assertTrue(validation.validate("00").isLeft)
+      assertTrue(validation.validate("009").isLeft)
+      assertTrue(validation.validate("13").isLeft)
+      assertTrue(validation.validate("-1").isLeft)
+    },
+    test("Date Validation d manual") {
+      val validation = Validation.time("d")
+      assertTrue(validation.validate("1").isRight)
+      assertTrue(validation.validate("9").isRight)
+      assertTrue(validation.validate("01").isRight)
+      assertTrue(validation.validate("09").isRight)
+      assertTrue(validation.validate("10").isRight)
+      assertTrue(validation.validate("31").isRight)
+      assertTrue(validation.validate("0").isLeft)
+      assertTrue(validation.validate("99").isLeft)
+      assertTrue(validation.validate("00").isLeft)
+      assertTrue(validation.validate("009").isLeft)
+      assertTrue(validation.validate("32").isLeft)
+      assertTrue(validation.validate("-1").isLeft)
+    },
+    test("Date Validation dd manual") {
+      val validation = Validation.time("dd")
+      assertTrue(validation.validate("1").isLeft)
+      assertTrue(validation.validate("9").isLeft)
+      assertTrue(validation.validate("01").isRight)
+      assertTrue(validation.validate("09").isRight)
+      assertTrue(validation.validate("10").isRight)
+      assertTrue(validation.validate("31").isRight)
+      assertTrue(validation.validate("0").isLeft)
+      assertTrue(validation.validate("99").isLeft)
+      assertTrue(validation.validate("00").isLeft)
+      assertTrue(validation.validate("009").isLeft)
+      assertTrue(validation.validate("32").isLeft)
+      assertTrue(validation.validate("-1").isLeft)
+    },
     test("Time Validation HH") {
       val parsedTimes =
         parseTimes(CreateTimesConfig(HasHour, "", NoMinute, "", NoSecond, "", NoFraction, "", NoAmPm), "HH")
@@ -279,8 +360,15 @@ object ValidationSpec extends DefaultRunnableSpec {
   }
   private case class ExampleDate(year: String, month: String, dayOfMonth: String)
 
+  sealed trait DateDirection
+  object DateDirection {
+    case object FORWARD extends DateDirection // yyyy-MM-dd
+    case object REVERSE extends DateDirection // dd-MM-yyyy
+  }
+
   private val exampleDates =
     Seq(
+      ExampleDate("00", "1", "1"),
       ExampleDate("00", "1", "1"),
       ExampleDate("00", "01", "01"),
       ExampleDate("22", "08", "22"),
@@ -323,6 +411,7 @@ object ValidationSpec extends DefaultRunnableSpec {
     hasMonth: Month,
     dayOfMonthSeparator: String = "",
     hasDayOfMonth: DayOfMonth,
+    dateDirection: DateDirection = FORWARD
   )
 
   private def createDates(

@@ -9,6 +9,10 @@ object TimeSpec extends DefaultRunnableSpec {
     test("Valid formats") {
       assert(Validation.time("yy"))(isSubtype[Validation[String]](anything)) &&
       assert(Validation.time("yyyy"))(isSubtype[Validation[String]](anything)) &&
+      assert(Validation.time("M"))(isSubtype[Validation[String]](anything)) &&
+      assert(Validation.time("MM"))(isSubtype[Validation[String]](anything)) &&
+      assert(Validation.time("d"))(isSubtype[Validation[String]](anything)) &&
+      assert(Validation.time("dd"))(isSubtype[Validation[String]](anything)) &&
       assert(Validation.time("H"))(isSubtype[Validation[String]](anything)) &&
       assert(Validation.time("HH"))(isSubtype[Validation[String]](anything)) &&
       assert(Validation.time("h"))(isSubtype[Validation[String]](anything)) &&
@@ -36,6 +40,8 @@ object TimeSpec extends DefaultRunnableSpec {
     test("Invalid formats") {
       assert(Validation.time("y"))(throws(hasMessage(containsString("Invalid year format")))) &&
       assert(Validation.time("yyy"))(throws(hasMessage(containsString("Invalid year format")))) &&
+      assert(Validation.time("MMM"))(throws(hasMessage(containsString("max length for")))) &&
+      assert(Validation.time("ddd"))(throws(hasMessage(containsString("max length for")))) &&
       assert(Validation.time("HHH"))(throws(hasMessage(containsString("max length for")))) &&
       assert(Validation.time("hhh"))(throws(hasMessage(containsString("max length for")))) &&
       assert(Validation.time("mmm"))(throws(hasMessage(containsString("max length for")))) &&
@@ -47,12 +53,13 @@ object TimeSpec extends DefaultRunnableSpec {
       assert(Validation.time("hhmmhh"))(throws(hasMessage(containsString("already used in format")))) &&
       assert(Validation.time("a HH:mm:s a"))(throws(hasMessage(containsString("already used in format")))) &&
       assert(Validation.time("HH:mm:ss.SS S"))(throws(hasMessage(containsString("already used in format")))) &&
-      assert(Validation.time(":"))(throws(hasMessage(containsString("There is no time field")))) &&
+      assert(Validation.time("yyyy-MM-dd/MM"))(throws(hasMessage(containsString("already used in format")))) &&
+      assert(Validation.time(":"))(throws(hasMessage(containsString("There is no date/time field")))) &&
       assert(Validation.time("b"))(throws(hasMessage(containsString("All letters are reserved")))) &&
       assert(Validation.time("j"))(throws(hasMessage(containsString("All letters are reserved")))) &&
       assert(Validation.time("B"))(throws(hasMessage(containsString("All letters are reserved")))) &&
       assert(Validation.time("J"))(throws(hasMessage(containsString("All letters are reserved")))) &&
-      assert(Validation.time(""))(throws(hasMessage(containsString("There is no time field"))))
+      assert(Validation.time(""))(throws(hasMessage(containsString("There is no date/time field"))))
     }
   )
 }

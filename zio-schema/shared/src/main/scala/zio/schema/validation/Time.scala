@@ -1,5 +1,6 @@
 package zio.schema.validation
 
+import java.time.format.DateTimeFormatter
 import scala.annotation.tailrec
 import scala.collection.mutable
 
@@ -8,12 +9,12 @@ trait Time {
   /**
    * Format is almost the same as the one used by the java.time.format.DateTimeFormatter class.
    *
-   *  yy           00-99 always 2 digits
-   *  yyyy         0000-9999 always 4 digits
-   *  m            1-12 always 1 or 2 digits
-   *  mm           01-12 always 2 digits
-   *  d            1-31 always 1 or 2 digits
-   *  dd           01-31 always 2 digits
+   *  yy           00-99 year always 2 digits
+   *  yyyy         0000-9999 year always 4 digits
+   *  M            1-12 month always 1 or 2 digits
+   *  MM           01-12 month always 2 digits
+   *  d            1-31 day of month always 1 or 2 digits
+   *  dd           01-31 day of month always 2 digits
    *
    *  a           AM/PM always 2 letters
    *  h           1-12 hour 1 or 2 digits
@@ -32,6 +33,8 @@ trait Time {
    * All other letters are reserved.
    *
    * Examples:
+   * yyyy-MM-dd
+   * d/m
    * HH:mm
    * 01:10
    * HH:mm:ss
@@ -55,6 +58,8 @@ trait Time {
 
   private val fields = Map[Char, Field](
     'y' -> TimeField('y', 1, 4),
+    'M' -> TimeField('M', 1, 2),
+    'd' -> TimeField('d', 1, 2),
     'H' -> TimeField('H', 1, 2),
     'h' -> TimeField('h', 1, 2),
     'm' -> TimeField('m', 1, 2),
@@ -75,7 +80,7 @@ trait Time {
 
       field.fold {
         if (cur >= 'a' && cur <= 'z' || cur >= 'A' && cur <= 'Z') {
-          throw new IllegalArgumentException(s"Invalid time format: $format. All letters are reserved.")
+          throw new IllegalArgumentException(s"Invalid date/time format: $format. All letters are reserved.")
         } else {
           field = Some(Literal(cur.toString))
         }
@@ -97,7 +102,7 @@ trait Time {
           result += f
           setField(cur)
         case Some(TimeField(letter, length, maxLength)) if (length == maxLength) =>
-          throw new IllegalArgumentException(s"Invalid time format: $format max length for ${letter} is ${maxLength}")
+          throw new IllegalArgumentException(s"Invalid date/time format: $format max length for ${letter} is ${maxLength}")
         case Some(f @ TimeField(_, length, _)) =>
           field = Some(f.copy(length = length + 1))
         case Some(l @ Literal(_)) if fields.contains(cur) =>
@@ -120,13 +125,13 @@ trait Time {
     }
 
     if (usedFields.isEmpty) {
-      throw new IllegalArgumentException(s"There is no time field (${fields.keySet.mkString(",")}) in format $format")
+      throw new IllegalArgumentException(s"There is no date/time field (${fields.keySet.mkString(",")}) in format $format")
     }
 
     val regexes = loop(result.toList, Seq.empty)
 
     if (regexes.isEmpty) {
-      throw new IllegalArgumentException(s"Invalid time format: $format")
+      throw new IllegalArgumentException(s"Invalid date/time format: $format")
     } else {
       regexes.reduce(_ ~ _)
     }
@@ -140,16 +145,25 @@ trait Time {
   private val from10to59 = Regex.between('1', '5') ~ Regex.digit
   private val from00to59 = Regex.between('0', '5') ~ Regex.digit
   private val from0to9   = Regex.digit
+  private val from10to29 = Regex.between('1', '2') ~ Regex.digit
+  private val from30to31 = Regex.oneOf('3') ~ Regex.between('0', '1')
+  private val from10to31 = from10to29 | from30to31
+  private val from1to9   = Regex.between('1', '9')
+  private val from01to09 = Regex.oneOf('0') ~ from1to9
   private val from00to99   = Regex.digit ~ Regex.digit //.exactly(2)
   private val from0000to9999   = Regex.digit.exactly(4)
 
   private def fieldToRegex(field: Field): Regex = field match {
     case TimeField('y', 2, _)                        => from00to99
     case TimeField('y', 4, _)                        => from0000to9999
+    case TimeField('M', 1, _)                        => from10to12 | from01to09 | from1to9
+    case TimeField('M', 2, _)                        => from10to12 | from01to09
+    case TimeField('d', 1, _)                        => from10to31 | from01to09 | from1to9
+    case TimeField('d', 2, _)                        => from10to31 | from00to09
     case TimeField('H', 1, _)                        => from20to24 | from10to19 | from00to09 | from0to9
-    case TimeField('H', 2, _)                        => from00to19 | from20to24
+    case TimeField('H', 2, _)                        => from20to24 | from00to19
     case TimeField('h', 1, _)                        => from10to12 | from00to09 | from0to9
-    case TimeField('h', 2, _)                        => from00to09 | from10to12
+    case TimeField('h', 2, _)                        => from10to12 | from00to09
     case TimeField('m', 1, _) | TimeField('s', 1, _) => from10to59 | from00to09 | from0to9
     case TimeField('m', 2, _) | TimeField('s', 2, _) => from00to59
     case TimeField('S', length, _)                   => Regex.digit.between(length, length)
@@ -161,4 +175,13 @@ trait Time {
     case Literal(l) => l.map(c => Regex.oneOf(c)).reduce(_ ~ _)
   }
 
+}
+
+
+object TimeMain {
+  def main(args: Array[String]): Unit = {
+    val dtf = DateTimeFormatter.ofPattern("M")
+    val res = dtf.parse("-999")
+    println(res)
+  }
 }
